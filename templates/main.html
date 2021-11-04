@@ -156,6 +156,9 @@
             timenow_int = parseInt(timenow)
             timeparty_int = parseInt(timepartynum)
 
+            console.log("now" + timenow_int)
+            console.log("party" +timeparty_int)
+            console.log('----------------')
             if (timenow_int > timeparty_int) {
                 $(`#${id_party}`).hide()
             }
@@ -200,7 +203,9 @@
             timepartynum = timeparty.replace(/[^0-9]/g,'');
             timenow_int = parseInt(timenow)
             timeparty_int = parseInt(timepartynum)
-
+            console.log("now" + timenow_int)
+            console.log("party" +timeparty_int)
+            console.log('----------------')
             if (timenow_int > timeparty_int) {
                 $(`#${id_party}`).hide()
             }

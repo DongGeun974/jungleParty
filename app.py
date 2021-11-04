@@ -28,6 +28,7 @@ def home():
             payload = jwt.decode(token_receive, SECRET_KEY, algorithms=['HS256'])
 
             now = str(dt.datetime.now()).replace('-', '').replace(':','').replace(" ", '')[:14]
+            print(now)
 
             return render_template('main.html',  allpartylist = getAllListID(), user = payload['OID'], username = payload['name'], time=now)
 
@@ -267,7 +268,8 @@ def makeDate(datetime_receive):
     ls2 = str(ls[2]).split(':')
 
     if str(ls[1]) == '오후':
-        ls2[0] = int(ls2[0]) + 12
+        if int(ls2[0]) != 12:
+            ls2[0] = int(ls2[0]) + 12
 
     ls = ls1 + ls2
 
