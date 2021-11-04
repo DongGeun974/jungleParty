@@ -11,7 +11,7 @@ from bson.objectid import ObjectId
 
 app = Flask(__name__)
 # client = MongoClient('localhost', 27017)
-client = MongoClient('mongodb://jaehyun:1234@3.35.20.6', 27017)
+client = MongoClient('mongodb://jaehyun:1234@3.36.126.56', 27017)
 db = client.partylist
 
 SECRET_KEY = 'Hello, welcome to the jungle'
@@ -132,6 +132,107 @@ def makeparty():
     else:
         return redirect(url_for('login'))
 
+############# mypage #############
+@app.route('/mypage')
+def mypage():
+    if request.cookies.get('mytoken'):
+
+        token_receive = request.cookies.get('mytoken')
+
+        try:
+            payload = jwt.decode(token_receive, SECRET_KEY, algorithms=['HS256'])
+
+            result = getAllListID()
+            writing = []
+            participation = []
+
+            print(payload['name'])
+            for item in result:
+                if item['author'] == payload['name']:
+                    writing.append(item)
+                else:
+                    for i in item['userlist']:
+                        if payload['name'] in i:
+                            participation.append(item)
+
+            print(participation)
+
+            return render_template('mypage.html', username = payload['name'], my_participation_partylist=participation, my_writing_partylist=writing, userID=payload['OID'])
+
+        except jwt.ExpiredSignatureError:
+            return redirect(url_for('login'))
+        except jwt.exceptions.DecodeError:
+            return redirect(url_for('login'))
+
+    else:
+        return redirect(url_for('login'))
+
+
+
+
+
+
+
+
+
+# db에서 로그인 정보를 찾고, 성공시 토큰 발행
+@app.route('/api/login', methods=['POST'])
+def api_login():
+    id_receive = request.form['id_give']
+    pw_receive = request.form['pw_give']
+
+    # pw_hash = hashlib.sha256(pw_receive.encode('utf-8')).hexdigest()
+
+    pw_ = hashlib.sha256((pw_receive + SECRET_KEY).encode('utf-8')).hexdigest()
+
+    result = db.user.find_one({'ID': id_receive, 'PW': pw_})
+
+
+    if result is not None:
+        payload = {
+            'id': id_receive,
+            'name' : result['name'],
+            'OID' : str(result['_id']),
+            'exp': dt.datetime.utcnow() + dt.timedelta(seconds=60 * 60 * 24)
+        }
+        token = jwt.encode(payload, SECRET_KEY, algorithm='HS256')
+
+        return jsonify({'result': 'success', 'token': token})
+    else:
+        return jsonify({'result': 'fail', 'msg': '아이디/비밀번호가 일치하지 않습니다.'})
+
+# db에서 아이디가 있는지 조회
+@app.route('/api/idCheck', methods=['GET'])
+def api_id_check():
+    id_receive = request.values['id_give']
+    result = db.user.find_one({'ID': id_receive})
+
+    if result is None:
+        return jsonify({'result': 'success'})
+    else:
+        return jsonify({'result': 'fail'})
+
+# 회원가입에서 정보를 db에 저장
+@app.route('/api/makeUser', methods=['POST'])
+def makeUser():
+    id_receive = request.form['id_give']
+    pw_receive = request.form['pw_give']
+    name_receive = request.form['name_give']
+    hostedlist = []
+    joinedlist = []
+
+    crypt_pw = hashlib.sha256((pw_receive+SECRET_KEY).encode('utf-8')).hexdigest()
+
+    db.user.insert_one({
+        'name' : name_receive,
+        'ID' : id_receive,
+        'PW' : crypt_pw,
+        'hostedlist' : hostedlist,
+        'joinedlist' : joinedlist
+    })
+
+    return jsonify({'result' : 'success'})
+
 @app.route('/api/makeparty', methods=['GET'])
 def api_make_party():
     title_receive = request.values['title_give']
@@ -177,103 +278,6 @@ def makeDate(datetime_receive):
     result = dt.datetime(result[0], result[1], result[2], result[3], result[4])
 
     return result
-
-
-############# mypage #############
-@app.route('/mypage')
-def mypage():
-    if request.cookies.get('mytoken'):
-
-        token_receive = request.cookies.get('mytoken')
-
-        try:
-            payload = jwt.decode(token_receive, SECRET_KEY, algorithms=['HS256'])
-
-            result = getAllListID()
-            writing = []
-            participation = []
-
-            print(payload['name'])
-            for item in result:
-                if item['author'] == payload['name']:
-                    writing.append(item)
-                else:
-                    for i in item['userlist']:
-                        if payload['name'] in i:
-                            participation.append(item)
-
-            print(participation)
-
-            return render_template('mypage.html', username = payload['name'], my_participation_partylist=participation, my_writing_partylist=writing, userID=payload['OID'])
-
-        except jwt.ExpiredSignatureError:
-            return redirect(url_for('login'))
-        except jwt.exceptions.DecodeError:
-            return redirect(url_for('login'))
-
-    else:
-        return redirect(url_for('login'))
-
-
-# db에서 로그인 정보를 찾고, 성공시 토큰 발행
-@app.route('/api/login', methods=['POST'])
-def api_login():
-    id_receive = request.form['id_give']
-    pw_receive = request.form['pw_give']
-
-    # pw_hash = hashlib.sha256(pw_receive.encode('utf-8')).hexdigest()
-
-    pw_ = hashlib.sha256((pw_receive + SECRET_KEY).encode('utf-8')).hexdigest()
-
-    result = db.user.find_one({'ID': id_receive, 'PW': pw_})
-
-
-    if result is not None:
-        payload = {
-            'id': id_receive,
-            'name' : result['name'],
-            'OID' : str(result['_id']),
-            'exp': dt.datetime.utcnow() + dt.timedelta(seconds=60 * 60 * 24)
-        }
-        token = jwt.encode(payload, SECRET_KEY, algorithm='HS256').decode('utf-8')
-
-        return jsonify({'result': 'success', 'token': token})
-    else:
-        return jsonify({'result': 'fail', 'msg': '아이디/비밀번호가 일치하지 않습니다.'})
-
-
-# db에서 아이디가 있는지 조회
-@app.route('/api/idCheck', methods=['GET'])
-def api_id_check():
-    id_receive = request.values['id_give']
-    result = db.user.find_one({'ID': id_receive})
-
-    if result is None:
-        return jsonify({'result': 'success'})
-    else:
-        return jsonify({'result': 'fail'})
-
-
-# 회원가입에서 정보를 db에 저장
-@app.route('/api/makeUser', methods=['POST'])
-def makeUser():
-    id_receive = request.form['id_give']
-    pw_receive = request.form['pw_give']
-    name_receive = request.form['name_give']
-    hostedlist = []
-    joinedlist = []
-
-    crypt_pw = hashlib.sha256((pw_receive+SECRET_KEY).encode('utf-8')).hexdigest()
-
-    db.user.insert_one({
-        'name' : name_receive,
-        'ID' : id_receive,
-        'PW' : crypt_pw,
-        'hostedlist' : hostedlist,
-        'joinedlist' : joinedlist
-    })
-
-    return jsonify({'result' : 'success'})
 
 @app.route('/api/addParticipation', methods = ['GET'])
 def add_Participation():
