@@ -11,7 +11,7 @@ from bson.objectid import ObjectId
 
 app = Flask(__name__)
 # client = MongoClient('localhost', 27017)
-client = MongoClient('mongodb://jaehyun:1234@3.36.126.56', 27017)
+client = MongoClient('localhost', 27017)
 db = client.partylist
 
 SECRET_KEY = 'Hello, welcome to the jungle'
